@@ -3,7 +3,7 @@
 #include<iostream> 
 using namespace std; 
 
-string commands[5] = {"doctor","Schedule","proceed","no","shutdown"};
+string commands[5] = {"doctor","schedule","proceed","no","shutdown"};
 
 class PySpeechModule
 {
@@ -68,7 +68,6 @@ class PySpeechModule
         {
             pArgs = PyTuple_New(1);
             paramValue = PyString_FromString(message);
-            PyTuple_SetItem(pArgs, 0, message);
             pValue = PyObject_CallObject(stt_pFunc, paramValue);
             if (!pValue) {
                 Py_DECREF(stt_pFunc);
@@ -77,6 +76,21 @@ class PySpeechModule
                 fprintf(stderr,"Call failed\n");
                 return 0;
             }
+        }
+
+        string *mlProcessing(string string)
+        {
+            //Todo:ml processing code
+        }
+
+        int scheduleFunction()
+        {
+            string output;
+            string *details;
+            cout<<"Ok, give me details n information";
+            output = this->speechToText();
+            details = this->mlProcessing(output);
+            //Todo: questions
         }
 };
 
@@ -96,8 +110,15 @@ int main(int argc, char *argv[])
         }
         else if (output.compare(commands[0])==0)
         {
-            speechmodule.textToSpeech("Hello sir, how may I help you, sir.");
+            /*Todo: there some errors in parameters need to fix*/
+            // speechmodule.textToSpeech("Hello sir, how may I help you, sir.");
+            cout << "Hello sir, how may I help you, sir.";
         }
+        else if (output.compare(commands[1])==0)
+        {
+            speechmodule.scheduleFunction();
+        }
+
         cout << output;
     }
 }
