@@ -4,6 +4,7 @@ pip install pyttsx3
 pip install pyaudio
 pip install speechrecognition
 sudo apt-get install python3-pyaudio
+pip install requests
 
 C++ compilation command:
 g++ -g doc.cpp -I <include path> -l<python version>

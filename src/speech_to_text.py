@@ -9,4 +9,4 @@ def speech_to_text():
             text = r.recognize_google(audio)    # use recognizer to convert our audio into text part.
             return format(text)
         except:
-            return NULL    # In case of voice not recognized  clearly
+            return 'NULL'    # In case of voice not recognized  clearly
