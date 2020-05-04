@@ -7,10 +7,9 @@
 using namespace std; 
 
 string commands[8] = {"doctor","schedule","send prescription","proceed","yes","no","shutdown","stop"};
-string b_or_a[2] = {"before","after"};
-string dayParts[4] = {"morning","afternoon","evening","night"};
 string months[12] = {"January","February","March","April","May","June","July","August","September","October","November ","December"};
 
+//to fetch month form word
 string getMonthIndex(string month)
 {
     cout<<month<<endl;
@@ -25,6 +24,7 @@ string getMonthIndex(string month)
     }
 }
 
+//Convert time to single integer value
 int convertToTimecode(char *val, const char *type)
 {
     int timecode = 0, tm;
@@ -61,6 +61,7 @@ int convertToTimecode(char *val, const char *type)
     return timecode;
 }
 
+//To fetch current timecode
 int currentTimecode() {
     time_t     now = time(0);
     struct tm  tstruct;
@@ -77,45 +78,38 @@ class PySpeechModule
         PyObject *pName, *stt_pModule, *tts_pModule, *stt_pFunc, *tts_pFunc;
         PyObject *pArgs, *pValue, *paramValue;
     public:
-        PySpeechModule(const char *stt_module_name, const char *tts_module_name)
+        PySpeechModule (const char *stt_module_name, const char *tts_module_name)
         {
             Py_Initialize();
-            Py_Initialize();
-            PyRun_SimpleString("import sys; sys.path.append('.')");
+            PyRun_SimpleString("import sys; sys.path.append('.')");     //next all paths will be starting from current path
 
+            //import speech to text python script
             pName = PyString_FromString(stt_module_name);
             stt_pModule = PyImport_Import(pName);
 
-            if (!stt_pModule) {
-                printf("ERROR");}
-
+            //import text to speech python script
             pName = PyString_FromString(tts_module_name);
             tts_pModule = PyImport_Import(pName);
-
-            if (!tts_pModule) {
-                printf("ERROR");}
 
             Py_DECREF(pName);
 
         }
 
-        int pyFuncModule(const char *stt_module_name, const char *tts_module_name)
+        //Create object of functions in python script
+        int pyFuncModule (const char *stt_module_name, const char *tts_module_name)
         {
             if (stt_pModule) {
                 stt_pFunc = PyObject_GetAttrString(stt_pModule, stt_module_name);
-            } else {
-                printf("ERROR");}
-
+            }
             if (tts_pModule) {
                 tts_pFunc = PyObject_GetAttrString(tts_pModule, tts_module_name);
-            } else {
-                printf("ERROR");}
+            }
         }
 
         string speechToText()
         {
             string text;
-            pValue = PyObject_CallObject(stt_pFunc, NULL);
+            pValue = PyObject_CallObject(stt_pFunc, NULL);      //Call function in python script
             if (pValue) {
                 text = PyString_AsString(pValue);
                 return text;
@@ -134,14 +128,9 @@ class PySpeechModule
         {
             pArgs = PyTuple_New(1);
             paramValue = PyString_FromString(message);
-            PyTuple_SetItem(pArgs, 0, paramValue);
+            PyTuple_SetItem(pArgs, 0, paramValue);      //create arguments for functions
             PyObject_CallObject(tts_pFunc, pArgs);
             return 0;
-        }
-
-        string *mlProcessing(string string)
-        {
-            //Todo:ml processing code
         }
 };
 
@@ -153,10 +142,11 @@ class Schedule
         string work;
         int schedule_flag;
     public:
-        Schedule *getTodaysSchedule()
+        Schedule()
         {
-
+            this->schedule_flag = 0;
         }
+
         int setSchedule(int timecode,string name, string date, string work)
         {
             this->timecode = timecode;
@@ -164,6 +154,7 @@ class Schedule
             this->work = work;
         }
 
+        //Write schedule data
         int writeScheduleData()
         {
             fstream fileout;
@@ -174,6 +165,7 @@ class Schedule
                  << "\n"; 
         }
 
+        //It gives schedule near to current time
         int getLatestScheduleData()
         {
             time_t   now = time(0);
@@ -227,38 +219,77 @@ class Schedule
                     }
                 }
             }
-            cout<<this->date<<endl<<this->timecode<<endl;
+            // cout<<this->date<<endl<<this->timecode<<endl;
         }
 
+        //Set Schedule values here
         int scheduleFunction(PySpeechModule speechmodule)
         {
             string output;
             char *time;
             string date = "";
             string temp;
+
+time_repeat:
             speechmodule.textToSpeech("Ok, at what time?");
+            cout << "speek format : for example 10 pm, 2 30 pm"<<endl;
+            sleep(1);
+
             output = speechmodule.speechToText();
-            cout<<output<<endl;
+            // cout<<output<<endl;
 
-            time = &output[0];
-            strtok(time," ");
+            if(output.compare("NULL")!=0)
+            {
+                time = &output[0];
+                strtok(time," ");
 
-            this->timecode = convertToTimecode(time, strtok(NULL," "));
-            cout<<this->timecode<<endl;
+                this->timecode = convertToTimecode(time, strtok(NULL," "));
+                cout<<this->timecode<<endl;
+            }
+            else
+            {
+                speechmodule.textToSpeech("Sorry I didnt get it");
+                speechmodule.textToSpeech("Can you repeat day again");
+                output = speechmodule.speechToText();
 
-            speechmodule.textToSpeech("On which day");
-            output = speechmodule.speechToText();
-            time = &output[0];
-
-            temp = (string)strtok(time," ");
-            date+=((temp.length()<2) ? "0"+temp : temp)+"/";
+                if(output.compare(commands[4]) == 0) {
+                    goto time_repeat;
+                }
+            }
             
-            temp = getMonthIndex(strtok(NULL," "));
-            date+=((temp.length()<2) ? "0"+temp : temp)+"/";
-            date+=(string)strtok(NULL," ");
 
-            cout<<date<<endl;
-            this->date = date;
+date_repeat:
+            speechmodule.textToSpeech("On which day");
+            cout << "speek format : for example 11 April 2020"<<endl;
+            sleep(1);
+
+            output = speechmodule.speechToText();
+            
+            if(output.compare("NULL")!=0)
+            {
+                time = &output[0];
+
+                temp = (string)strtok(time," ");
+                date+=((temp.length()<2) ? "0"+temp : temp)+"/";
+                
+                temp = getMonthIndex(strtok(NULL," "));
+                date+=((temp.length()<2) ? "0"+temp : temp)+"/";
+                date+=(string)strtok(NULL," ");
+
+                cout<<date<<endl;
+                this->date = date;
+            }
+            else
+            {
+                speechmodule.textToSpeech("Sorry I didnt get it");
+                speechmodule.textToSpeech("Can you repeat day again");
+                output = speechmodule.speechToText();
+
+                if(output.compare(commands[4]) == 0) {
+                    goto date_repeat;
+                }
+            }
+            
 
             speechmodule.textToSpeech("Tell the reminder");
             this->work = speechmodule.speechToText();
@@ -311,6 +342,34 @@ class Prescription
             PyObject_CallObject(presp_pFunc, pArgs);
             return 0;
         }
+
+        int setPrescriptionValues(PySpeechModule speechmodule)
+        {
+            string prescription_note = "";
+            string output = "";
+            speechmodule.textToSpeech("Tell me patient name ");
+            this->patient_name = speechmodule.speechToText();
+            speechmodule.textToSpeech("Write down patient email address");
+            cout << "Write Here ";
+            cin >> this->email_id;
+            
+            speechmodule.textToSpeech("You can speak prescriptions details one by one, speak stop when finished");
+            while(1)
+            {
+                output = speechmodule.speechToText();
+                if(output.compare(commands[7])==0)
+                {
+                    cout<< prescription_note<<endl;
+                    break;
+                }
+                speechmodule.textToSpeech("Hm hm");
+
+                if(output.compare("NULL")!=0)
+                    prescription_note +="\n"+output;
+            }
+            this->presecription_list = output;
+
+        }
 };
 
 int main(int argc, char *argv[])
@@ -318,20 +377,24 @@ int main(int argc, char *argv[])
     int i, enable_assitant = 0;
     int wait_flag = 0;
     string output;
-    PySpeechModule speechmodule("speech_to_text","text_to_speech");
-    Schedule schedule;
-    schedule.schedule_flag = 0;
 
+    /*Create object of speech Module which work as stt (speech to text)
+     tts(text to speech)*/
+    PySpeechModule speechmodule("speech_to_text","text_to_speech");
     speechmodule.pyFuncModule("speech_to_text","text_to_speech");
+
+
+    Schedule schedule;
+    schedule.getLatestScheduleData();
 
     while(1) {
 
         output = speechmodule.speechToText();
-        if(output.compare(commands[4])==0)
+        if(output.compare(commands[6])==0)      //shutdown command
         {
             break;
         }
-        else if (output.compare(commands[0])==0)
+        else if (output.compare(commands[0])==0)    //Wake up command
         {
             speechmodule.textToSpeech("Hello, how may I help you.");
             enable_assitant = 1;
@@ -339,57 +402,37 @@ int main(int argc, char *argv[])
         
         if(enable_assitant)
         {
-            if (output.compare(commands[1])==0)
+            if (output.compare(commands[1])==0)     //Schedule command
             {
-                wait_flag = 1;
+                wait_flag = 1;   
                 schedule.scheduleFunction(speechmodule);
+                enable_assitant = 0;
                 wait_flag = 0;
             }
-            else if ((output.compare(commands[2]))==0)
+            else if ((output.compare(commands[2]))==0)    //prescription command
             {
                 Prescription prescription;
-                string prescription_note = "";
                 wait_flag = 1;
-
-                speechmodule.textToSpeech("Tell me patient name ");
-                prescription.patient_name = speechmodule.speechToText();
-                // cout << output<<endl;
-                speechmodule.textToSpeech("Write down patient email address");
-                cout << "Write Here ";
-                cin >> prescription.email_id;
-                
-                speechmodule.textToSpeech("You can speak prescriptions details one by one, speak stop when finished");
-                while(1)
-                {
-                    output = speechmodule.speechToText();
-                    if(output.compare(commands[7])==0)
-                    {
-                        cout<< prescription_note<<endl;
-                        break;
-                    }
-                    speechmodule.textToSpeech("Hm hm");
-
-                    if(output.compare("NULL")!=0)
-                        prescription_note +="\n"+output;
-                }
-                prescription.presecription_list = output;
-
+                prescription.setPrescriptionValues(speechmodule);
+                enable_assitant = 0;
                 wait_flag = 0;
                 cout << output;
             }
-            else if(schedule.schedule_flag && !wait_flag)
+        }
+
+        if(schedule.schedule_flag && !wait_flag)    //if there is shedule
+        {
+            int crtime = currentTimecode();
+            cout<<"tick "<<crtime<<"\t"<<schedule.timecode<<endl;
+            if(crtime > schedule.timecode)
             {
-                int crtime = currentTimecode();
-                cout<<"tick "<<crtime<<"\t"<<schedule.timecode<<endl;
-                if(crtime > schedule.timecode)
-                {
-                    string text = "Hi you have "+schedule.work;
-                    char *msg = &text[0];
-                    speechmodule.textToSpeech(msg);
-                    schedule.getLatestScheduleData();
-                }
+                string text = "Hi , you have an schedule "+schedule.work;
+                char *msg = &text[0];
+                speechmodule.textToSpeech(msg);
+                schedule.getLatestScheduleData();
             }
         }
+
         cout<<output<<endl;
         // system("clear");
     }
